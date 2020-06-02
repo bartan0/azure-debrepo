@@ -19,32 +19,6 @@ def file_hash_size (filename):
 
 	return hash.digest().hex(), size
 
-def az_storage (args, *,
-	storage_account,
-	sas_token,
-	**kwarg
-):
-	return run([ 'az', 'storage', *args ],
-		env = {
-			**environ,
-			'AZURE_STORAGE_ACCOUNT': storage_account,
-			'AZURE_STORAGE_SAS_TOKEN': sas_token
-		},
-		**kwarg
-	)
-
-def az_upload (filename, container, blobname,
-	**kwarg
-):
-	return az_storage([ 'blob', 'upload',
-		'--container', container,
-		'--file', filename,
-		'--name', blobname
-	],
-		capture_output = True,
-		**kwarg
-	)
-
 def extract_control (filename):
 	res = run([ 'sh', '-c', 'dpkg --ctrl-tarfile %s | tar -xO' % filename ],
 		capture_output = True,
