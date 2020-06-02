@@ -45,28 +45,6 @@ def az_upload (filename, container, blobname,
 		**kwarg
 	)
 
-def gpg (args, **kwarg):
-	gpgdir = path.abspath('gpg')
-	makedirs(gpgdir, 0o700, True)
-
-	return run([ 'gpg', *args ],
-		env = {
-			**environ,
-			'GNUPGHOME': gpgdir
-		},
-		**kwarg
-	)
-
-def gpg_init (user_id):
-	gpg([ '--quick-gen-key', '--batch', '--passphrase', '', user_id ],
-		capture_output = True
-	)
-
-def gpg_pubkey (user_id, filename):
-	gpg([ '--export', user_id ],
-		stdout = open(filename, 'wb')
-	)
-
 def extract_control (filename):
 	res = run([ 'sh', '-c', 'dpkg --ctrl-tarfile %s | tar -xO' % filename ],
 		capture_output = True,
