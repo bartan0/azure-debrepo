@@ -50,6 +50,9 @@ class Packages:
 
 		self._filename = dirpath + '/Packages'
 
+	def get_path (self):
+		return self._filename
+
 	def append (self, entry):
 		with open(self._filename, 'a') as f:
 			entry.write(f)

@@ -22,6 +22,9 @@ class Release:
 			Date = formatdate(),
 		)
 
+	def get_dirpath (self):
+		return self._root
+
 	def write (self, stream):
 		stream.write('\n'.join('%s: %s' % pair for pair in self._fields.items()))
 		stream.write(
@@ -31,3 +34,5 @@ class Release:
 			]) +
 			'\n'
 		)
+
+		return stream

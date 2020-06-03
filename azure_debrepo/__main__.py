@@ -1,15 +1,14 @@
 from sys import argv
+from io import StringIO
+from os import path
+from functools import wraps
 
-from .lib import (
-	az_upload,
-	gpg_init,
-	pkg_entry,
-	gpg_pubkey,
-	packages_append,
-	in_release,
-	pkg_upload,
-	packages_upload,
-	in_release_upload
+from . import (
+	AzureStorage,
+	GPG,
+	Packages,
+	PackagesEntry,
+	Release
 )
 from .secret import (
 	USER_ID,
@@ -18,28 +17,64 @@ from .secret import (
 	SAS_TOKEN
 )
 
-az_context = {
-	'storage_account': STORAGE_ACCOUNT,
-	'sas_token': SAS_TOKEN
-}
+
+def with_gpg (f):
+	@wraps(f)
+	def wrapper (*args):
+		f(GPG('gpg', USER_ID), *args)
+
+	return wrapper
 
 
-def init ():
+def with_storage (f):
+	@wraps(f)
+	def wrapper (*args):
+		f(AzureStorage(CONTAINER,
+			account_name = STORAGE_ACCOUNT,
+			sas_token = SAS_TOKEN
+		), *args)
+
+	return wrapper
+
+
+@with_gpg
+@with_storage
+def init (storage, gpg):
 	fname = 'pubkey.gpg'
+	gpg.genkey()
 
-	gpg_init(USER_ID)
-	gpg_pubkey(USER_ID, fname)
+	with open(fname, 'wb') as f:
+		gpg.pubkey(f)
 
-	az_upload(fname, CONTAINER, fname, **az_context)
+	storage.upload(fname, fname)
 
-def add (filename):
-	entry = pkg_entry(filename)
-	packages_append('buster', 'main', 'amd64', entry)
-	in_release('buster', [ 'main' ], [ 'all', 'amd64' ])
+@with_gpg
+@with_storage
+def add (storage, gpg, filename):
+	entry = PackagesEntry.extract(filename)
+	packages = Packages('.',
+		suite = 'buster',
+		component = 'main',
+		arch = 'amd64'
+	)
+	release = Release('.',
+		suite = 'buster',
+		components = [ 'main' ],
+		archs = [ 'amd64' ]
+	)
 
-	pkg_upload(filename, CONTAINER, entry, **az_context)
-	packages_upload('buster', 'main', 'amd64', CONTAINER, **az_context)
-	in_release_upload('buster', CONTAINER, **az_context)
+	packages.append(entry)
+	s = release.write(StringIO())
+
+	p_packages = packages.get_path()
+	p_inrelease = release.get_dirpath() + '/InRelease'
+
+	with open(p_inrelease, 'wb') as f:
+		gpg.clearsign(s.getvalue().encode('utf8'), f)
+
+	storage.upload(p_packages, path.relpath(p_packages, '.'))
+	storage.upload(p_inrelease, path.relpath(p_inrelease, '.'))
+	storage.upload(filename, entry.filename)
 
 
 if __name__ == '__main__':
