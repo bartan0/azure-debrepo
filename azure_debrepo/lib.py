@@ -19,39 +19,6 @@ def file_hash_size (filename):
 
 	return hash.digest().hex(), size
 
-def extract_control (filename):
-	res = run([ 'sh', '-c', 'dpkg --ctrl-tarfile %s | tar -xO' % filename ],
-		capture_output = True,
-		universal_newlines = True
-	)
-
-	return dict(( field.strip(), value.strip() ) for ( field, value ) in
-		( line.split(':', 1) for line in res.stdout.split('\n') if line )
-	)
-
-def control_ext (filename):
-	h, s = file_hash_size(filename)
-
-	return {
-		'Filename': 'pool/%s.deb' % h,
-		'Size': s,
-		'SHA256': h
-	}
-
-def pkg_entry (filename):
-	return {
-		**extract_control(filename),
-		**control_ext(filename)
-	}
-
-def packages_append (suite, component, arch, entry):
-	p = 'dists/%s/%s/binary-%s' % (suite, component, arch)
-	makedirs(p, exist_ok = True)
-
-	with open(p + '/Packages', 'a') as f:
-		f.writelines('%s: %s\n' % item for item in entry.items())
-		f.write('\n')
-
 def release_hashes (suite, components):
 	prefix = 'dists/%s/' % suite
 	res = run([ 'find', *components, '-name', 'Packages' ],
@@ -81,13 +48,6 @@ def in_release (dist, *args):
 	gpg([ '--clearsign' ],
 		input = bytes('\n'.join('%s: %s' % x for x in release(dist, *args).items()), 'utf8'),
 		stdout = open('dists/%s/InRelease' % dist, 'wb')
-	)
-
-def pkg_upload (filename, container, pkg_entry,
-	**kwarg
-):
-	return az_upload(filename, container, pkg_entry['Filename'],
-		**kwarg
 	)
 
 def packages_upload (dist, component, arch, container,
