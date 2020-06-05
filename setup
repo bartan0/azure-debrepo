@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+
+from setuptools import setup
+from azure_debrepo import __version__
+
+setup(
+	name = 'azure-debrepo',
+	description = 'Basic management of Debian packages repository in Azure blob storage',
+	version = __version__,
+	packages = [ 'azure_debrepo' ]
+)
