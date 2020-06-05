@@ -1,13 +1,11 @@
 from functools import wraps
-from getopt import GetoptError, getopt
 from io import StringIO
 from os import (
 	chdir,
 	environ as env,
-	getcwd,
 	path
 )
-from sys import argv, exit, stdout, stderr
+from sys import argv, exit
 
 from . import (
 	__version__,
@@ -17,56 +15,12 @@ from . import (
 	PackagesEntry,
 	Release
 )
-
-initwd = getcwd()
-commands = {}
-
-
-def error (msg, status = 0):
-	print('Error: %s' % msg, file = stderr)
-
-	if status:
-		exit(status)
-
-def resolve (p):
-	if path.isabs(p):
-		return p
-
-	return path.join(initwd, p)
-
-def command (*,
-	options = '',
-	longopts = [],
-	help = None,
-	internal = False
-):
-	def decorator (f):
-		@wraps(f)
-		def g (*argv, **kwarg):
-			try:
-				opts, args = getopt(argv,
-					options if help is None else options + 'h',
-					longopts if help is None else longopts + [ 'help' ]
-				)
-
-			except GetoptError as err:
-				error(err, 2)
-
-			opts = dict(((opt[2:] if opt.startswith('--') else opt[1:]).replace('-', '_'), val) for opt, val in opts)
-
-			if help is not None and ('h' in opts or 'help' in opts):
-				stdout.write(help)
-
-				return 0
-
-			return f(*args, **opts, **kwarg)
-
-		if not internal:
-			commands[f.__name__] = g
-
-		return g
-
-	return decorator
+from .cli import (
+	cli,
+	command,
+	error,
+	resolve
+)
 
 
 def with_gpg (f):
@@ -200,7 +154,7 @@ Options:
 		'workdir=',
 		'version'
 	],
-	internal = True
+	entry = True
 )
 def _main (*args,
 	V = None,
@@ -221,11 +175,8 @@ def _main (*args,
 
 		chdir(workdir)
 
-	if cmd not in commands:
-		error('%s: Unknown command' % cmd, 2)
-
-	return commands[cmd](*args, **kwarg)
+	return cli(cmd)(*args, **kwarg)
 
 
 if __name__ == '__main__':
-	exit(_main(*argv[1:]))
+	exit(cli())
