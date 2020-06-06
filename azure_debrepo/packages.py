@@ -7,10 +7,16 @@ from .lib import file_hash_size
 
 class PackagesEntry:
 
+	DEB_FIELDS = [
+		'Package',
+		'Version',
+		'Architecture'
+	]
+
 	@classmethod
 	def extract (cls, filename):
 		h, s = file_hash_size(filename)
-		data = subprocess.run([ 'sh', '-c', 'dpkg --ctrl-tarfile %s | tar -xO' % filename ],
+		proc = subprocess.run([ 'dpkg-deb', '--field', filename, *cls.DEB_FIELDS ],
 			capture_output = True,
 			universal_newlines = True
 		)
@@ -18,7 +24,7 @@ class PackagesEntry:
 		res = cls()
 		res.filename = 'pool/%s.deb' % h
 		res._fields = dict(( field.strip(), value.strip() ) for ( field, value ) in
-			( line.split(':', 1) for line in data.stdout.split('\n') if line )
+			( line.split(':', 1) for line in proc.stdout.split('\n') if line )
 		)
 		res._fields.update(
 			Filename = res.filename,
